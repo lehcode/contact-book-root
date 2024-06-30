@@ -23,6 +23,7 @@ RUN if [ -n "${debug}" ]; then set -eux; fi && \
     
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     if [ -n "${debug}" ]; then set -eux; fi && \
+    npm install -g npm@latest && \
     corepack enable && \
     yarn init -2 && \
     yarn set version stable && yarn install && \

@@ -54,10 +54,10 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASS}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+      MYSQL_DATABASE: ${SQL_DB_NAME}
+      MYSQL_USER: ${SQL_USER}
+      MYSQL_PASSWORD: ${SQL_DB_PASS}
+      MYSQL_ROOT_PASSWORD: ${SQL_DB_ROOT_PASS}
       SERVICE_TAGS: dev
       SERVICE_NAME: mysql
     networks:
@@ -168,6 +168,24 @@ services:
   #   networks:
   #     - laravel_net
 
+  phpmyadmin:
+    image: phpmyadmin:fpm-alpine
+    restart: always
+    ports:
+      - 8080:80
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=${MYSQL_PORT:-3306}
+      - PMA_USER=${SQL_USER:-laravel}
+      - PMA_PASSWORD=${SQL_DB_PASS}
+      - PMA_UPLOADDIR=/tmp/phpmyadmin
+      - PMA_PMADB=phpmyadmin
+    networks:
+      - laravel_net
+    depends_on:
+      - mysql
+      - php
+
 volumes:
   mysql_data:
   redis_data:
@@ -175,3 +193,6 @@ volumes:
 
 networks:
   laravel_net:
+    ipam:
+      config:
+        - subnet: 172.177.0.0/24

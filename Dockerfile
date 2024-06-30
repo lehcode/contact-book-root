@@ -41,4 +41,6 @@ RUN if [ -n "${debug}" ]; then set -eux; fi && \
 
 COPY api ${app_root}
 
+WORKDIR ${app_root}
+
 CMD ["php-fpm", "-y", "/usr/local/etc/php-fpm.conf", "-R"]
