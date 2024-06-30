@@ -1,0 +1,24 @@
+@startuml
+
+actor User
+participant "Nuxt 3 Frontend" as FE
+participant "Laravel API" as API
+participant "Contact Controller" as ContactController
+participant "Contact Service" as ContactService
+participant "Contact Repository" as ContactRepository
+participant "Database" as DB
+
+User -> FE : Create Contact
+FE -> API : POST /api/contacts
+API -> API : Validate Request
+API -> ContactController: addContact()
+ContactController -> ContactService: addContact(contactData)
+ContactService -> ContactRepository: save(contact)
+ContactRepository -> DB: INSERT INTO contacts
+ContactRepository -> DB: INSERT INTO phones
+ContactRepository -> ContactService: return contact
+ContactService --> API : return Contact ID
+API --> FE : Contact Created (JSON Response)
+FE -> User : Display Success Message
+
+@enduml

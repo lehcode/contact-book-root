@@ -1,0 +1,9 @@
+[submodule "ui/vue"]
+	path = ui/vue
+	url = git@github.com:lehcode/contact-book-front-vue.git
+[submodule "api/laravel"]
+	path = api/laravel
+	url = git@github.com:lehcode/contact-book-backend-laravel.git
+[submodule "api/gateway"]
+	path = api/gateway
+	url = git@github.com:lehcode/contact-book-gateway.git

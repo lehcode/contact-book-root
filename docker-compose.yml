@@ -1,0 +1,179 @@
+services:
+  api-laravel:
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+      args:
+        - uid=${HOST_UID:-1000}
+        - user=${HOST_USER}
+        - gid=${HOST_GID:-1000}
+        - app_root=${BACKEND_ROOT}
+        - debug=${BACKEND_DEBUG:-}
+    environment:
+      - APP_ROOT=${BACKEND_ROOT}
+    ports:
+      - "8000:80"
+    volumes:
+      - ./api:${BACKEND_ROOT}:delegated
+    depends_on:
+      - php
+      - redis
+      - mysql
+      # - mailhog
+    networks:
+      - laravel_net
+    working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./docker/node/Dockerfile
+      args:
+        - node_version=${VUE_NODE_VERSION}
+        - app_root=${FRONTEND_ROOT:-/src}
+        - uid=${HOST_UID}
+        - user=${HOST_USER}
+        - gid=${HOST_GID}
+        - debug=${DEBUG:-no}
+    working_dir: ${FRONTEND_ROOT:-/src}
+    command: "npm run dev -- -o"
+    networks:
+      - laravel_net
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+    volumes:
+      - ./api/gateway:${FRONTEND_ROOT:-/src}:delegated
+    depends_on:
+      - api-laravel
+
+  mysql:
+    image: mariadb:10.6
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    networks:
+      - laravel_net
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  php:
+    build:
+      args:
+        - uid=${HOST_UID:-1000}
+        - user=${HOST_USER}
+        - gid=${HOST_GID:-1000}
+        - app_root=${BACKEND_ROOT}
+        - redis_version=${REDIS_VERSION:-6.0.2}
+        - php_version=${PHP_VERSION:-8.2}
+        - debug=${BACKEND_DEBUG:-}
+    volumes:
+      - ./api:${BACKEND_ROOT}:delegated
+    networks:
+      - laravel_net
+    working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
+
+  redis:
+    image: redis:${REDIS_VERSION:-6.0.2}-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    sysctls:
+      net.core.somaxconn: 1024
+    networks:
+      - laravel_net
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - redis_data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+
+  composer:
+    container_name: laravel_composer
+    build:
+      args:
+        - uid=${HOST_UID:-1000}
+        - gid=${HOST_GID:-1000}
+        - user=${HOST_USER}
+        - app_root=${BACKEND_ROOT}
+        - redis_version=${REDIS_VERSION:-6.0.2}
+        - php_version=${PHP_VERSION:-8.2}
+        - debug=${BACKEND_DEBUG:-}
+    volumes:
+      - ./api:${BACKEND_ROOT}
+    depends_on:
+      - php
+    entrypoint: [ "composer", "--ignore-platform-reqs" ]
+    networks:
+      - laravel_net
+    working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
+
+  ui-vue:
+    build:
+      context: .
+      dockerfile: ./docker/node/Dockerfile
+      args:
+        - node_version=${VUE_NODE_VERSION}
+        - app_root=${FRONTEND_ROOT:-/src}
+        - uid=${HOST_UID}
+        - user=${HOST_USER}
+        - gid=${HOST_GID}
+        - debug=${DEBUG:-no}    
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+      - "5173:5173"
+    working_dir: ${FRONTEND_ROOT:-/src}
+    networks:
+      - laravel_net
+    command: "npm run start"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+    volumes:
+      - ./ui/vue:${FRONTEND_ROOT:-/src}:delegated
+      # - npm_logs:/home/${HOST_USER}/.npm/_logs/
+    depends_on:
+      - api-laravel
+      - api-gateway
+
+  artisan:
+    container_name: laravel_artisan
+    build:
+      args:
+        - uid=${HOST_UID:-1000}
+        - user=${HOST_USER}
+        - gid=${HOST_GID:-1000}
+        - app_root=${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
+        - redis_version=${REDIS_VERSION:-6.0.2}
+        - php_version=${PHP_VERSION:-8.2}
+        - debug=${BACKEND_DEBUG:-}
+    volumes:
+      - ./api:${BACKEND_ROOT}:delegated
+    depends_on:
+      - mysql
+    entrypoint: [ "php", "${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}/artisan" ]
+    networks:
+      - laravel_net
+    working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
+
+  # mailhog:
+  #   image: mailhog/mailhog:latest
+  #   ports:
+  #     - "1025:1025"
+  #     - "8025:8025"
+  #   networks:
+  #     - laravel_net
+
+volumes:
+  mysql_data:
+  redis_data:
+  npm_logs:
+
+networks:
+  laravel_net:

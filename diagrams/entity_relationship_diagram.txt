@@ -1,0 +1,23 @@
+@startuml
+
+entity Contact {
+  * id : bigint <<PK>>
+  * first_name : string
+  * last_name : string
+  * archived: boolean
+  * created_at : timestamp
+  * updated_at : timestamp
+}
+
+entity Phone {
+  * id : bigint <<PK>>
+  * contact_id : bigint <<FK>>
+  * number : string
+  * inactive: boolean
+  * created_at : timestamp
+  * updated_at : timestamp
+}
+
+Contact ||--o{ Phone : has
+
+@enduml

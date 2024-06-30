@@ -1,0 +1,27 @@
+@startuml
+skinparam componentStyle rectangle
+
+package "UI & API Gateway (Vue/Nuxt)" {
+  [Contact List]
+  [Create Contact]
+  [Edit Contact]
+  [API Gateway]
+}
+
+package "Backend (Laravel)" {
+  [Contact Controller]
+  [Contact Service]
+  [Contact Repository]
+  [Database]
+}
+
+[Contact List] --> [API Gateway]
+[Create Contact] --> [API Gateway]
+[Edit Contact] --> [API Gateway]
+
+[API Gateway] -> [Contact Controller]
+[Contact Controller] --> [Contact Service]
+[Contact Service] --> [Contact Repository]
+[Contact Repository] --> [Database]
+
+@enduml
