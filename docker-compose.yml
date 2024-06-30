@@ -10,7 +10,7 @@ services:
         - app_root=${BACKEND_ROOT}
         - debug=${BACKEND_DEBUG:-}
     environment:
-      - APP_ROOT=${BACKEND_ROOT}
+      - DB_CONNECTION=mariadb
     ports:
       - "8000:80"
     volumes:

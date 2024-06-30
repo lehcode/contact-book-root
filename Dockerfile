@@ -25,11 +25,13 @@ RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
     if [ -n "${debug}" ]; then set -eux; fi && \
     mkdir -p /var/cache/apk && ln -s /var/cache/apk /etc/apk/cache && \
     apk update && apk upgrade && \
-    docker-php-ext-install pdo pdo_mysql && \
+    apk add icu-dev && \
     mkdir -p /usr/src/php/ext/redis \
     && curl -L https://github.com/phpredis/phpredis/archive/${redis_version}.tar.gz | tar xvz -C /usr/src/php/ext/redis --strip 1 \
     && echo 'redis' >> /usr/src/php-available-exts \
-    && docker-php-ext-install redis && \
+    docker-php-ext-configure pdo pdo_mysql redis intl && \
+    docker-php-ext-install pdo pdo_mysql redis intl && \
+    docker-php-ext-enable pdo pdo_mysql redis intl && \
     if [ -n ${debug} ]; then apk cache clean; fi
 
 RUN if [ -n "${debug}" ]; then set -eux; fi && \

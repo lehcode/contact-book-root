@@ -1,0 +1,38 @@
+@startuml
+skinparam componentStyle rectangle
+
+package "UI (Vue)" {
+  [EntityList()]
+  [CreateEntity()]
+  [EditEntity()]
+}
+
+package "API Gateway (Nuxt)" {
+  [GET /api/entity]
+  [POST /api/entity]
+  [PATCH /api/entity]
+}
+
+package "Backend (PHP)" {
+  [EntityController]
+  [EntityService]
+  [EntityRepository]
+}
+
+package "Eloquent" {
+    [Database]
+}
+
+[EntityList()] --> [GET /api/entity]
+[CreateEntity()] --> [POST /api/entity]
+[EditEntity()] --> [PATCH /api/entity]
+
+[GET /api/entity] -> [EntityController]
+[POST /api/entity] -> [EntityController]
+[PATCH /api/entity] -> [EntityController]
+
+[EntityController] -> [EntityService]
+[EntityService] -> [EntityRepository]
+[EntityRepository] --> [Database]
+
+@enduml
