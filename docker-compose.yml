@@ -27,18 +27,19 @@ services:
   api-gateway:
     build:
       context: .
-      dockerfile: ./docker/node/Dockerfile
+      dockerfile: ./docker/node/gateway.Dockerfile
       args:
-        - node_version=${VUE_NODE_VERSION}
+        - node_version=${APP_NODE_VERSION}
         - app_root=${FRONTEND_ROOT:-/src}
         - uid=${HOST_UID}
         - user=${HOST_USER}
         - gid=${HOST_GID}
         - debug=${DEBUG:-no}
     working_dir: ${FRONTEND_ROOT:-/src}
-    command: "npm run dev -- -o"
     networks:
       - laravel_net
+    ports:
+      - "3000:3000"
     environment:
       NODE_ENV: ${NODE_ENV:-development}
     volumes:
@@ -117,22 +118,19 @@ services:
   ui-vue:
     build:
       context: .
-      dockerfile: ./docker/node/Dockerfile
+      dockerfile: ./docker/node/vue.Dockerfile
       args:
-        - node_version=${VUE_NODE_VERSION}
+        - node_version=${APP_NODE_VERSION}
         - app_root=${FRONTEND_ROOT:-/src}
         - uid=${HOST_UID}
         - user=${HOST_USER}
         - gid=${HOST_GID}
-        - debug=${DEBUG:-no}    
+        - debug=${DEBUG:-no}
     ports:
-      - "3000:3000"
-      - "3001:3001"
       - "5173:5173"
     working_dir: ${FRONTEND_ROOT:-/src}
     networks:
       - laravel_net
-    command: "npm run start"
     environment:
       NODE_ENV: ${NODE_ENV:-development}
     volumes:

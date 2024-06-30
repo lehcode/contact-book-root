@@ -23,6 +23,7 @@ RUN if [ -n "${debug}" ]; then set -eux; fi && \
     
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     if [ -n "${debug}" ]; then set -eux; fi && \
+    npm install -g npm@latest && \
     corepack enable && \
     yarn init -2 && \
     yarn set version stable && yarn install && \
@@ -31,6 +32,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 RUN if [ -n "${debug}" ]; then set -eux; fi && \
     echo "${USER}\t\tALL=(ALL:ALL)\tNOPASSWD:ALL" | tee --append /etc/sudoers > /dev/null
 
+COPY api/gateway/package.json .
+COPY api/gateway/package-lock.json .
+
+RUN npm install --omit=dev
+
 USER ${USER}:docker
 
-WORKDIR ${APP_ROOT}
+CMD [ "npm", "run", "dev" ]

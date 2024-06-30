@@ -31,9 +31,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 RUN if [ -n "${debug}" ]; then set -eux; fi && \
     echo "${USER}\t\tALL=(ALL:ALL)\tNOPASSWD:ALL" | tee --append /etc/sudoers > /dev/null
 
+COPY ui/vue/package.json .
+COPY ui/vue/package-lock.json .
 
-# COPY ui/mono/apps/vue
+RUN npm install --omit=dev
 
-# COPY entrypoint.sh /init.sh
+USER ${USER}:docker
 
-WORKDIR ${APP_ROOT}
+CMD [ "npm", "run", "dev" ]
+
