@@ -21,22 +21,24 @@ RUN if [ -n "${debug}" ]; then set -eux; fi && \
     useradd -m -d /home/${USER} -u ${UID} -g ${GID} ${USER} && \
     chmod 775 /home/${USER}
     
+RUN if [ -n "${debug}" ]; then set -eux; fi && \
+    npm install -g npm@latest > /dev/null && \
+    corepack enable > /dev/null && \
+    yarn init -2 > /dev/null && \
+    yarn set version stable && yarn install
+
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     if [ -n "${debug}" ]; then set -eux; fi && \
-    npm install -g npm@latest && \
-    corepack enable && \
-    yarn init -2 && \
-    yarn set version stable && yarn install && \
-    if [ -z "${debug}" ]; then apt cache clear; fi
+    apt-get update > /dev/null && \
+    apt-get -qy upgrade > /dev/null && \
+    apt-get -qy install sudo net-tools > /dev/null && \
+    echo "${USER}\t\tALL=(ALL:ALL)\tNOPASSWD:ALL" | tee --append /etc/sudoers && \
+    if [ -z "${debug}" ]; then apt cache clear > /dev/null; fi
 
-RUN if [ -n "${debug}" ]; then set -eux; fi && \
-    echo "${USER}\t\tALL=(ALL:ALL)\tNOPASSWD:ALL" | tee --append /etc/sudoers > /dev/null
+COPY api/gateway/yarn.lock .
 
-COPY api/gateway/package.json .
-COPY api/gateway/package-lock.json .
-
-RUN npm install --omit=dev
+RUN yarn install
 
 USER ${USER}:docker
 
-CMD [ "npm", "run", "dev" ]
+CMD [ "yarn", "dev" ]

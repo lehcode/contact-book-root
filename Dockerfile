@@ -36,7 +36,7 @@ RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
 
 RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
     if [ -n "${debug}" ]; then set -eux; fi && \
-    apk add php8-pecl-xdebug && \
+    apk add php-pecl-xdebug && \
     if [ -n ${debug} ]; then apk cache clean; fi
 
 RUN if [ -n "${debug}" ]; then set -eux; fi && \
@@ -45,6 +45,13 @@ RUN if [ -n "${debug}" ]; then set -eux; fi && \
     echo "php_admin_flag[log_errors] = on" >> /usr/local/etc/php-fpm.d/www.conf && \
     echo "php_admin_value[error_reporting] = E_ALL & ~E_DEPRECATED & ~E_STRICT" >> /usr/local/etc/php-fpm.d/www.conf && \
     mkdir -p ${app_root}
+
+# Configure Xdebug
+RUN echo "xdebug.start_with_request=yes" | tee -a /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.mode=debug" | tee -a /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.log=/var/www/html/xdebug/xdebug.log" | tee -a /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.discover_client_host=1" | tee -a /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.client_port=9000" | tee -a /usr/local/etc/php/conf.d/xdebug.ini
 
 COPY api ${app_root}
 

@@ -32,12 +32,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 RUN if [ -n "${debug}" ]; then set -eux; fi && \
     echo "${USER}\t\tALL=(ALL:ALL)\tNOPASSWD:ALL" | tee --append /etc/sudoers > /dev/null
 
-COPY ui/vue/package.json .
-COPY ui/vue/package-lock.json .
+COPY ui/vue/yarn.lock .
 
-RUN npm install --omit=dev
+RUN yarn install
 
 USER ${USER}:docker
 
-CMD [ "npm", "run", "dev" ]
+CMD [ "yarn", "dev" ]
 

@@ -18,6 +18,7 @@ services:
     depends_on:
       - redis
       - mysql
+      - php
       # - mailhog
     networks:
       - laravel_net
@@ -30,9 +31,9 @@ services:
       args:
         - node_version=${APP_NODE_VERSION}
         - app_root=${FRONTEND_ROOT:-/src}
-        - uid=${HOST_UID}
+        - uid=${HOST_UID:-1000}
         - user=${HOST_USER}
-        - gid=${HOST_GID}
+        - gid=${HOST_GID:-1000}
         - debug=${DEBUG:-no}
     working_dir: ${FRONTEND_ROOT:-/src}
     networks:
@@ -88,9 +89,11 @@ services:
         - redis_version=${REDIS_VERSION:-6.0.2}
         - php_version=${PHP_VERSION:-8.2}
         - debug=${BACKEND_DEBUG:-}
+    depends_on:
+      - php
     volumes:
       - ./api:${BACKEND_ROOT}
-    entrypoint: [ "composer", "--ignore-platform-reqs" ]
+    entrypoint: [ "composer" ]
     networks:
       - laravel_net
     working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
@@ -164,6 +167,23 @@ services:
       - laravel_net
     depends_on:
       - mysql
+      - php
+
+  php:
+    build:
+      args:
+        - uid=${HOST_UID:-1000}
+        - user=${HOST_USER}
+        - gid=${HOST_GID:-1000}
+        - app_root=${BACKEND_ROOT}
+        - redis_version=${REDIS_VERSION:-6.0.2}
+        - php_version=${PHP_VERSION:-8.2}
+        - debug=${BACKEND_DEBUG:-}
+    volumes:
+      - ./api:${BACKEND_ROOT}:delegated
+    networks:
+      - laravel_net
+    working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
 
 volumes:
   mysql_data:
