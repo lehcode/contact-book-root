@@ -34,6 +34,11 @@ RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
     docker-php-ext-enable pdo pdo_mysql redis intl && \
     if [ -n ${debug} ]; then apk cache clean; fi
 
+RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
+    if [ -n "${debug}" ]; then set -eux; fi && \
+    apk add php8-pecl-xdebug && \
+    if [ -n ${debug} ]; then apk cache clean; fi
+
 RUN if [ -n "${debug}" ]; then set -eux; fi && \
     sed -i "s/user = www-data/user = ${user}/g" /usr/local/etc/php-fpm.d/www.conf && \
     sed -i "s/group = www-data/group = docker/g" /usr/local/etc/php-fpm.d/www.conf && \

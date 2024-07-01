@@ -10,13 +10,12 @@ services:
         - app_root=${BACKEND_ROOT}
         - debug=${BACKEND_DEBUG:-}
     environment:
-      - DB_CONNECTION=mariadb
+      - DB_CONNECTION=mysql
     ports:
       - "8000:80"
     volumes:
       - ./api:${BACKEND_ROOT}:delegated
     depends_on:
-      - php
       - redis
       - mysql
       # - mailhog
@@ -48,38 +47,21 @@ services:
       - api-laravel
 
   mysql:
-    image: mariadb:10.6
+    image: mysql:8.0.37
     restart: unless-stopped
     tty: true
     ports:
       - "3306:3306"
     environment:
-      MYSQL_DATABASE: ${SQL_DB_NAME}
-      MYSQL_USER: ${SQL_USER}
-      MYSQL_PASSWORD: ${SQL_DB_PASS}
-      MYSQL_ROOT_PASSWORD: ${SQL_DB_ROOT_PASS}
-      SERVICE_TAGS: dev
-      SERVICE_NAME: mysql
+      - MYSQL_DATABASE=${SQL_DB_NAME}
+      - MYSQL_USER=${SQL_USER}
+      - MYSQL_PASSWORD=${SQL_DB_PASS}
+      - MYSQL_ROOT_PASSWORD=${SQL_DB_ROOT_PASS}
+      - MYSQL_ONETIME_PASSWORD=yes
     networks:
       - laravel_net
     volumes:
       - mysql_data:/var/lib/mysql
-
-  php:
-    build:
-      args:
-        - uid=${HOST_UID:-1000}
-        - user=${HOST_USER}
-        - gid=${HOST_GID:-1000}
-        - app_root=${BACKEND_ROOT}
-        - redis_version=${REDIS_VERSION:-6.0.2}
-        - php_version=${PHP_VERSION:-8.2}
-        - debug=${BACKEND_DEBUG:-}
-    volumes:
-      - ./api:${BACKEND_ROOT}:delegated
-    networks:
-      - laravel_net
-    working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
 
   redis:
     image: redis:${REDIS_VERSION:-6.0.2}-alpine
@@ -108,8 +90,6 @@ services:
         - debug=${BACKEND_DEBUG:-}
     volumes:
       - ./api:${BACKEND_ROOT}
-    depends_on:
-      - php
     entrypoint: [ "composer", "--ignore-platform-reqs" ]
     networks:
       - laravel_net
@@ -184,7 +164,6 @@ services:
       - laravel_net
     depends_on:
       - mysql
-      - php
 
 volumes:
   mysql_data:
