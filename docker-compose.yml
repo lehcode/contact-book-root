@@ -24,6 +24,28 @@ services:
       - laravel_net
     working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
 
+  php:
+    build:
+      dockerfile: Dockerfile
+      args:
+        - uid=${HOST_UID:-1000}
+        - user=${HOST_USER}
+        - gid=${HOST_GID:-1000}
+        - app_root=${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
+        - redis_version=${REDIS_VERSION:-6.0.2}
+        - php_version=${PHP_VERSION:-8.2}
+        - debug=${BACKEND_DEBUG:-yes}
+    environment:
+      - XDEBUG_SESSION=1
+    volumes:
+      - ./api/laravel:${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}:delegated
+      - /docker/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - laravel_net
+    working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
+
   api-gateway:
     build:
       context: .
@@ -168,22 +190,6 @@ services:
     depends_on:
       - mysql
       - php
-
-  php:
-    build:
-      args:
-        - uid=${HOST_UID:-1000}
-        - user=${HOST_USER}
-        - gid=${HOST_GID:-1000}
-        - app_root=${BACKEND_ROOT}
-        - redis_version=${REDIS_VERSION:-6.0.2}
-        - php_version=${PHP_VERSION:-8.2}
-        - debug=${BACKEND_DEBUG:-}
-    volumes:
-      - ./api:${BACKEND_ROOT}:delegated
-    networks:
-      - laravel_net
-    working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
 
 volumes:
   mysql_data:
