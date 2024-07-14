@@ -48,13 +48,13 @@ RUN if [ -n "${debug}" ]; then set -eux; fi && \
     mkdir -p ${app_root}
 
 # Configure Xdebug
-RUN echo "xdebug.start_with_request=yes" | tee -a /usr/local/etc/php/conf.d/xdebug.ini && \
-    echo "xdebug.mode=develop,debug" | tee -a /usr/local/etc/php/conf.d/xdebug.ini && \
-    echo "xdebug.log=/var/www/html/xdebug/xdebug.log" | tee -a /usr/local/etc/php/conf.d/xdebug.ini && \
-    echo "xdebug.discover_client_host=1" | tee -a /usr/local/etc/php/conf.d/xdebug.ini && \
-    echo "xdebug.client_host=host.docker.internal" | tee -a /usr/local/etc/php/conf.d/xdebug.ini && \
-    echo "xdebug.client_port=9003" | tee -a /usr/local/etc/php/conf.d/xdebug.ini && \
-    echo "xdebug.start_with_request=yes" | tee -a /usr/local/etc/php/conf.d/xdebug.ini
+COPY docker/php-fpm/xdebug.ini /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+# RUN echo "xdebug.mode=develop,debug" | tee -a /usr/local/etc/php/conf.d/xdebug.ini && \
+#     echo "xdebug.log=/var/www/html/xdebug/xdebug.log" | tee -a /usr/local/etc/php/conf.d/xdebug.ini && \
+#     echo "xdebug.discover_client_host=1" | tee -a /usr/local/etc/php/conf.d/xdebug.ini && \
+#     echo "xdebug.client_host=host.docker.internal" | tee -a /usr/local/etc/php/conf.d/xdebug.ini && \
+#     echo "xdebug.client_port=9003" | tee -a /usr/local/etc/php/conf.d/xdebug.ini && \
+#     echo "xdebug.start_with_request=yes" | tee -a /usr/local/etc/php/conf.d/xdebug.ini
 
 COPY api ${app_root}
 

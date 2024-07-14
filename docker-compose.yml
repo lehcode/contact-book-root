@@ -1,5 +1,8 @@
 services:
   api-laravel:
+    env_file:
+      - ./api/laravel/.env
+      - ./.env
     build:
       context: ./docker/nginx
       dockerfile: Dockerfile
@@ -10,11 +13,21 @@ services:
         - app_root=${BACKEND_ROOT}
         - debug=${BACKEND_DEBUG:-}
     environment:
+      # Override Laravel environment variables
+      # Full list: https://www.inmotionhosting.com/support/edu/laravel/understanding-the-laravel-env-file/
       - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=33060
+      - DB_DATABASE=${MYSQL_DB_NAME}
+      - DB_USERNAME=${MYSQL_DB_USER:-root}
+      - DB_PASSWORD=${MYSQL_DB_PASS:-}
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - REDIS_HOST=redis
     ports:
       - "8000:80"
     volumes:
-      - ./api:${BACKEND_ROOT}:delegated
+      - ./api/laravel:${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}:delegated
     depends_on:
       - redis
       - mysql
@@ -37,9 +50,15 @@ services:
         - debug=${BACKEND_DEBUG:-yes}
     environment:
       - XDEBUG_SESSION=1
-    volumes:
-      - ./api/laravel:${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}:delegated
-      - /docker/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+      # - DB_CONNECTION=mysql
+      # - DB_HOST=mysql
+      # - DB_PORT=${MYSQL_DB_PORT:-3306}
+      # - DB_DATABASE=${MYSQL_DB_NAME:-laravel}
+      # - DB_USER=${MYSQL_USER:-laravel}
+      # - DB_PASS=${MYSQL_DB_PASS}
+    # volumes:
+      # - ./api/laravel:${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}:delegated
+      # - /docker/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -71,20 +90,28 @@ services:
 
   mysql:
     image: mysql:8.0.37
-    restart: unless-stopped
+    restart: on-failure
     tty: true
     ports:
       - "3306:3306"
+      - "33060:33060"
     environment:
-      - MYSQL_DATABASE=${SQL_DB_NAME}
-      - MYSQL_USER=${SQL_USER}
-      - MYSQL_PASSWORD=${SQL_DB_PASS}
-      - MYSQL_ROOT_PASSWORD=${SQL_DB_ROOT_PASS}
-      - MYSQL_ONETIME_PASSWORD=yes
+      - MYSQL_DATABASE=${MYSQL_DB_NAME}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_DB_PASS}
+      - MYSQL_RANDOM_ROOT_PASSWORD=yes
+      - MYSQL_ROOT_HOST=%
+      - MYSQL_LOG_CONSOLE=true
+      - TZ=EEST
     networks:
       - laravel_net
     volumes:
-      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/laravel.cnf
+      - ./docker/mysql/data/:/var/lib/mysql/
+      - ./docker/mysql/log/mysql.log:/var/log/mysql/mysql.log
+      - ./docker/mysql/log/error.log:/var/log/mysql/error.log
+      - ./docker/mysql/log/mysql-slow.log:/var/log/mysql/mysql-slow.log
+    # user: ${HOST_UID}:${HOST_GID}
 
   redis:
     image: redis:${REDIS_VERSION:-6.0.2}-alpine
@@ -103,6 +130,7 @@ services:
   composer:
     container_name: laravel_composer
     build:
+      dockerfile: Dockerfile
       args:
         - uid=${HOST_UID:-1000}
         - gid=${HOST_GID:-1000}
@@ -116,6 +144,34 @@ services:
     volumes:
       - ./api:${BACKEND_ROOT}
     entrypoint: [ "composer" ]
+    networks:
+      - laravel_net
+    working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
+
+  artisan:
+    container_name: laravel_artisan
+    build:
+      dockerfile: Dockerfile
+      args:
+        - uid=${HOST_UID:-1000}
+        - user=${HOST_USER}
+        - gid=${HOST_GID:-1000}
+        - app_root=${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
+        - redis_version=${REDIS_VERSION:-6.0.2}
+        - php_version=${PHP_VERSION:-8.2}
+        - debug=${BACKEND_DEBUG:-}
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=${MYSQL_DB_PORT:-3306}
+      - DB_DATABASE=${MYSQL_DB_NAME:-laravel}
+      - DB_USER=${MYSQL_USER:-laravel}
+      - DB_PASS=${MYSQL_DB_PASS}
+    volumes:
+      - ./api:${BACKEND_ROOT}:delegated
+    depends_on:
+      - mysql
+    entrypoint: [ "php", "${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}/artisan" ]
     networks:
       - laravel_net
     working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
@@ -145,26 +201,6 @@ services:
       - api-laravel
       - api-gateway
 
-  artisan:
-    container_name: laravel_artisan
-    build:
-      args:
-        - uid=${HOST_UID:-1000}
-        - user=${HOST_USER}
-        - gid=${HOST_GID:-1000}
-        - app_root=${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
-        - redis_version=${REDIS_VERSION:-6.0.2}
-        - php_version=${PHP_VERSION:-8.2}
-        - debug=${BACKEND_DEBUG:-}
-    volumes:
-      - ./api:${BACKEND_ROOT}:delegated
-    depends_on:
-      - mysql
-    entrypoint: [ "php", "${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}/artisan" ]
-    networks:
-      - laravel_net
-    working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
-
   # mailhog:
   #   image: mailhog/mailhog:latest
   #   ports:
@@ -181,8 +217,8 @@ services:
     environment:
       - PMA_HOST=mysql
       - PMA_PORT=${MYSQL_PORT:-3306}
-      - PMA_USER=${SQL_USER:-laravel}
-      - PMA_PASSWORD=${SQL_DB_PASS}
+      - PMA_USER=${MYSQL_USER:-laravel}
+      - PMA_PASSWORD=${MYSQL_DB_PASS}
       - PMA_UPLOADDIR=/tmp/phpmyadmin
       - PMA_PMADB=phpmyadmin
     networks:
