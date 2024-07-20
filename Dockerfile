@@ -52,5 +52,7 @@ COPY docker/php-fpm/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 WORKDIR ${app_root}
 
 COPY api ${app_root}
+#COPY docker/php-fpm/php-fpm.conf /usr/local/etc/php-fpm.d/laravel.conf
+COPY docker/php-fpm/www.conf /usr/local/etc/php-fpm.d/www.conf
 
 CMD ["php-fpm", "-y", "/usr/local/etc/php-fpm.conf", "-R"]
