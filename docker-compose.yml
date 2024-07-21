@@ -1,5 +1,6 @@
 services:
   api-laravel:
+    container_name: api
     env_file:
       - ./api/laravel/.env
       - ./.env
@@ -12,10 +13,10 @@ services:
         - gid=${HOST_GID:-1000}
         - app_root=${BACKEND_ROOT}
         - debug=${BACKEND_DEBUG:-}
+        - tz=${TIMEZONE:-Etc/UTC}
     environment:
       # Override Laravel environment variables
       # Full list: https://www.inmotionhosting.com/support/edu/laravel/understanding-the-laravel-env-file/
-      - XDEBUG_SESSION=1
       - DB_CONNECTION=mysql
       - DB_HOST=mysql
       - DB_PORT=33060
@@ -31,7 +32,7 @@ services:
     volumes:
       - ./api/laravel:${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
       # - /docker/php-fpm/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini:cached
-      # - /docker/php-fpm/php-fpm.conf:/usr/local/etc/php/conf.d/php-fpm.ini:cached
+      # - /docker/php-fpm/php-fpm.conf:/usr/local/etc/php/conf.d/php-cli.ini:cached
     depends_on:
       - redis
       - mysql
@@ -43,6 +44,7 @@ services:
     tty: true
 
   php:
+    container_name: php-fpm-${PHP_VERSION:-8.2}
     build:
       dockerfile: Dockerfile
       args:
@@ -53,8 +55,9 @@ services:
         - redis_version=${REDIS_VERSION:-6.0.2}
         - php_version=${PHP_VERSION:-8.2}
         - debug=${BACKEND_DEBUG:-yes}
+        - tz=${TIMEZONE:-Etc/UTC}
     environment:
-      - XDEBUG_SESSION=1
+      - XDEBUG_CONFIG=${XDEBUG_INIT_CONF:-client_host=172.177.0.1}
       - DB_CONNECTION=mysql
       - DB_HOST=mysql
       - DB_PORT=33060
@@ -67,7 +70,7 @@ services:
       - MOCK_DATA=${MOCK_DATA:-no}
     volumes:
       - ./api/laravel:${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
-      - /docker/php-fpm/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini:cached
+      - /docker/php-fpm/xdebug.ini:/usr/local/etc/php/conf.d/99-xdebug.ini:cached
       - /docker/php-fpm/php-fpm.conf:/usr/local/etc/php/php-fpm.conf:cached
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -125,7 +128,7 @@ services:
       - ./docker/mysql/my.cnf:/etc/mysql/conf.d/laravel.cnf:cached
       - ./docker/mysql/data/:/var/lib/mysql/
       # - ./docker/mysql/log/mysql.log:/var/log/mysql/mysql.log
-      # - ./docker/mysql/log/error.log:/var/log/mysql/error.log
+      - ./docker/mysql/log/error.log:/var/log/mysql/error.log
       # - ./docker/mysql/log/mysql-slow.log:/var/lib/mysql/mysql-slow.log
     #user: ${HOST_UID}:${HOST_GID}
 
@@ -143,55 +146,63 @@ services:
       - redis_data:/data
       - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf:cached
 
-  composer:
-    container_name: laravel_composer
-    build:
-      dockerfile: Dockerfile
-      args:
-        - uid=${HOST_UID:-1000}
-        - gid=${HOST_GID:-1000}
-        - user=${HOST_USER}
-        - app_root=${BACKEND_ROOT}
-        - redis_version=${REDIS_VERSION:-6.0.2}
-        - php_version=${PHP_VERSION:-8.2}
-        - debug=${BACKEND_DEBUG:-}
-    depends_on:
-      - php
-    volumes:
-      - ./api:${BACKEND_ROOT}
-    entrypoint: [ "composer" ]
-    networks:
-      - laravel_net
-    working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
+  # composer:
+  #   container_name: php-fpm-${PHP_VERSION:-8.2}-composer
+  #   build:
+  #     dockerfile: Dockerfile
+  #     args:
+  #       - uid=${HOST_UID:-1000}
+  #       - gid=${HOST_GID:-1000}
+  #       - user=${HOST_USER}
+  #       - app_root=${BACKEND_ROOT}
+  #       - redis_version=${REDIS_VERSION:-6.0.2}
+  #       - php_version=${PHP_VERSION:-8.2}
+  #       - debug=${BACKEND_DEBUG:-}
+  #       - tz=${TIMEZONE:-Etc/UTC}
+  #   depends_on:
+  #     - php
+  #   volumes:
+  #     - ./api:${BACKEND_ROOT}
+  #   entrypoint: [ "composer" ]
+  #   networks:
+  #     - laravel_net
+  #   working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
 
-  artisan:
-    container_name: laravel_artisan
-    build:
-      dockerfile: Dockerfile
-      args:
-        - uid=${HOST_UID:-1000}
-        - user=${HOST_USER}
-        - gid=${HOST_GID:-1000}
-        - app_root=${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
-        - redis_version=${REDIS_VERSION:-6.0.2}
-        - php_version=${PHP_VERSION:-8.2}
-        - debug=${BACKEND_DEBUG:-}
-    environment:
-      - DB_CONNECTION=mysql
-      - DB_HOST=mysql
-      - DB_PORT=${MYSQL_DB_PORT:-3306}
-      - DB_DATABASE=${MYSQL_DB_NAME:-laravel}
-      - DB_USER=${MYSQL_USER:-laravel}
-      - DB_PASS=${MYSQL_DB_PASS}
-    volumes:
-      - ./api:${BACKEND_ROOT}
-    depends_on:
-      - mysql
-      - php
-    entrypoint: [ "php", "${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}/artisan" ]
-    networks:
-      - laravel_net
-    working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
+  # artisan:
+  #   container_name: php-fpm-${PHP_VERSION:-8.2}-artisan
+  #   build:
+  #     dockerfile: Dockerfile
+  #     args:
+  #       - uid=${HOST_UID:-1000}
+  #       - user=${HOST_USER}
+  #       - gid=${HOST_GID:-1000}
+  #       - app_root=${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
+  #       - redis_version=${REDIS_VERSION:-6.0.2}
+  #       - php_version=${PHP_VERSION:-8.2}
+  #       - debug=${BACKEND_DEBUG:-}
+  #       - tz=${TIMEZONE:-Etc/UTC}
+  #   environment:
+  #     - XDEBUG_SESSION=1
+  #     - DB_CONNECTION=mysql
+  #     - DB_HOST=mysql
+  #     - DB_PORT=33060
+  #     - DB_DATABASE=${MYSQL_DB_NAME}
+  #     - DB_USERNAME=${MYSQL_DB_USER:-laravel}
+  #     - DB_PASSWORD=${MYSQL_DB_PASS:-}
+  #     - APP_ENV=local
+  #     - APP_DEBUG=true
+  #     - REDIS_HOST=redis
+  #     - MOCK_DATA=${MOCK_DATA:-no}
+  #   env_file: ./.env
+  #   volumes:
+  #     - ./api:${BACKEND_ROOT}
+  #   depends_on:
+  #     - mysql
+  #     - php
+  #   entrypoint: [ "php", "${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}/artisan" ]
+  #   networks:
+  #     - laravel_net
+  #   working_dir: ${BACKEND_ROOT}/${LARAVEL_APP_NAME:-laravel}
 
   ui-vue:
     build:
