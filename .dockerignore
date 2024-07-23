@@ -3,3 +3,4 @@ doc
 .github
 **/LICENSE.md
 **/README.md
+docker/**/user-home
