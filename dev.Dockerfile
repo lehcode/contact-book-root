@@ -21,7 +21,6 @@ ENV TZ=${tz}
 # Copy the latest Composer binary from the official Composer Docker image
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
-# Install system packages and configure PHP extensions
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     if [ -n "${debug}" ]; then set -eux; fi && \
     apt-get -q update && \
@@ -61,10 +60,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     if [ -n "${debug}" ]; then set -eux; fi && \
     apt-get -y install nginx nginx-extras && \
     mkdir -p ${app_root} /run/nginx && \
-    chown takeshi:docker ${app_root} /var/log/nginx /run/nginx /etc/nginx
+    chown -R ${user}:docker ${app_root} /var/log/nginx /run/nginx /etc/nginx
 
 # Copy configuration files for PHP and PHP-FPM
-COPY docker/php-fpm/php.dev.ini /usr/local/etc/php/php.ini
+# COPY docker/php-fpm/php.dev.ini /usr/local/etc/php/php.ini
 COPY docker/php-fpm/www.conf /usr/local/etc/php-fpm.d/www.conf
 COPY docker/php-fpm/xdebug.ini /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
@@ -75,15 +74,13 @@ RUN if [ -n "${debug}" ]; then set -eux; fi && \
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 
 RUN if [ -n "${debug}" ]; then set -eux; fi && \
-    # Replace nginx user
+    # Update nginx user
     sed -i "s/user(\t|\s)+.+;/user "${user}" docker;/g" /etc/nginx/nginx.conf && \
     pid_path=$(printf '%s\n' "/run/nginx/nginx.pid" | sed 's/[\/&]/\\&/g') && \
     sed -i "s/pid \/run\/nginx\.pid;/pid "${pid_path}";/g" /etc/nginx/nginx.conf && \
-    # Replace document root
+    # Update server document root
     escaped_app_root=$(printf '%s\n' "$app_root" | sed 's/[.\/&]/\\&/g') && \
     sed -i "s/root \/var\/www\/html;/root "${escaped_app_root}";/g" /etc/nginx/conf.d/default.conf
-    # cat /etc/nginx/conf.d/default.conf
-    # exit 1
 
 # Set the working directory for the application
 WORKDIR ${app_root}

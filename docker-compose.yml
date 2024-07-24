@@ -29,12 +29,6 @@ services:
       - MOCK_DATA=${MOCK_DATA:-no}
     volumes:
       - ./api/laravel:${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
-      # - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
-      # - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
-      # - ./docker/php-fpm/php.dev.ini:/usr/local/etc/php/php.ini
-      # - ./docker/php-fpm/php-fpm.conf:/usr/local/etc/php-fpm.conf
-      # - ./docker/php-fpm/www.conf:/usr/local/etc/php-fpm.d/www.conf
-      # - ./docker/php-fpm/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -122,6 +116,9 @@ services:
         - php_version=${PHP_VERSION:-8.2}
         - debug=${BACKEND_DEBUG:-}
         - tz=${TIMEZONE:-Etc/UTC}
+        - redis_version=${REDIS_VERSION:-6.0.2}
+    environment:
+      - XDEBUG_SESSION=1
     depends_on:
       - php-api
     volumes:
@@ -129,8 +126,6 @@ services:
     entrypoint: [ "composer" ]
     networks:
       - laravel_net
-    working_dir: ${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
-    user: ${HOST_USER}:docker
 
   php-artisan:
     container_name: php-artisan
@@ -145,6 +140,7 @@ services:
         - php_version=${PHP_VERSION:-8.2}
         - debug=${BACKEND_DEBUG:-}
         - tz=${TIMEZONE:-Etc/UTC}
+        - redis_version=${REDIS_VERSION:-6.0.2}
     environment:
       - DB_CONNECTION=mysql
       - DB_HOST=mysql
@@ -156,6 +152,7 @@ services:
       - APP_DEBUG=true
       - REDIS_HOST=redis
       - MOCK_DATA=${MOCK_DATA:-no}
+      - XDEBUG_SESSION=1
     env_file: ./.env
     volumes:
       - ./api/laravel:${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
@@ -165,8 +162,6 @@ services:
     entrypoint: [ "php", "${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}/artisan" ]
     networks:
       - laravel_net
-    working_dir: ${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
-    user: ${HOST_USER}:docker
 
   ui-vue:
     build:
