@@ -1,53 +1,11 @@
 services:
   php-api:
-    env_file:
-      - ./api/laravel/.env
-      - ./.env
-    build:
-      context: ./docker/nginx
-      dockerfile: Dockerfile
-      args:
-        - uid=${HOST_UID}
-        - user=${HOST_USER}
-        - gid=${HOST_GID}
-        - app_root=${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
-        - app_name=${LARAVEL_APP_NAME:-/var/www/html}/${LARAVEL_APP_NAME}
-        - debug=${BACKEND_DEBUG:-}
-        - tz=${TIMEZONE:-Etc/UTC}
-    environment:
-      # Override Laravel environment variables
-      # Full list: https://www.inmotionhosting.com/support/edu/laravel/understanding-the-laravel-env-file/
-      - DB_CONNECTION=mysql
-      - DB_HOST=mysql
-      - DB_PORT=33060
-      - DB_DATABASE=${MYSQL_DB_NAME}
-      - DB_USERNAME=${MYSQL_DB_USER:-root}
-      - DB_PASSWORD=${MYSQL_DB_PASS:-}
-      - APP_ENV=local
-      - APP_DEBUG=true
-      - REDIS_HOST=redis
-      - MOCK_DATA=${MOCK_DATA:-no}
-    ports:
-      - "8000:80"
-      - "8443:443"
-    volumes:
-      - ./api/laravel:${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
-    depends_on:
-      - redis
-      - mysql
-      - php-fpm
-      # - mailhog
-    networks:
-      - laravel_net
-    working_dir: ${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
-    tty: true
-
-  php-fpm:
+    container_name: api-laravel
     env_file:
         - ./api/laravel/.env
         - ./.env
     build:
-      dockerfile: Dockerfile
+      dockerfile: dev.Dockerfile
       args:
         - uid=${HOST_UID:-1000}
         - user=${HOST_USER:-takeshi}
@@ -66,15 +24,23 @@ services:
       - DB_USERNAME=${MYSQL_DB_USER:-laravel}
       - DB_PASSWORD=${MYSQL_DB_PASS:-}
       - APP_ENV=local
-      - APP_DEBUG=true
+      - APP_DEBUG=${BACKEND_DEBUG:-true}
       - REDIS_HOST=redis
       - MOCK_DATA=${MOCK_DATA:-no}
     volumes:
       - ./api/laravel:${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
+      # - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      # - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      # - ./docker/php-fpm/php.dev.ini:/usr/local/etc/php/php.ini
+      # - ./docker/php-fpm/php-fpm.conf:/usr/local/etc/php-fpm.conf
+      # - ./docker/php-fpm/www.conf:/usr/local/etc/php-fpm.d/www.conf
+      # - ./docker/php-fpm/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
       - laravel_net
+    ports:
+      - "8000:80"
     working_dir: ${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
     tty: true
 
@@ -98,8 +64,6 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
     volumes:
       - ./api/gateway:/home/${HOST_USER}/nuxt
-    depends_on:
-      - php-api
     tty: true
 
   mysql:
@@ -159,13 +123,14 @@ services:
         - debug=${BACKEND_DEBUG:-}
         - tz=${TIMEZONE:-Etc/UTC}
     depends_on:
-      - php-fpm
+      - php-api
     volumes:
       - ./api/laravel:${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
     entrypoint: [ "composer" ]
     networks:
       - laravel_net
     working_dir: ${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
+    user: ${HOST_USER}:docker
 
   php-artisan:
     container_name: php-artisan
@@ -196,11 +161,12 @@ services:
       - ./api/laravel:${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
     depends_on:
       - mysql
-      - php-fpm
+      - php-api
     entrypoint: [ "php", "${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}/artisan" ]
     networks:
       - laravel_net
     working_dir: ${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
+    user: ${HOST_USER}:docker
 
   ui-vue:
     build:

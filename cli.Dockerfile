@@ -23,7 +23,7 @@ RUN if [ -n "${debug}" ]; then set -eux; fi && \
     echo ${tz} > /etc/timezone && \
     dpkg-reconfigure -f noninteractive tzdata && \
     addgroup --gid ${gid} docker && \
-    adduser --ingroup docker --disabled-password --uid ${uid} --home /home/${user} --shell /bin/sh ${user} && \
+    echo Y | adduser --ingroup docker --disabled-password --uid ${uid} --home /home/${user} --shell /bin/sh ${user} && \
     usermod --groups www-data,root ${user} && \
     apt-get -qy install --no-install-recommends sudo tzdata locales && \
     echo "${user} ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/${user} && \
