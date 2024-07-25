@@ -4,3 +4,5 @@ doc
 **/LICENSE.md
 **/README.md
 docker/**/user-home
+mysql/data
+mysql/log

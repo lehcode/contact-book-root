@@ -1,4 +1,5 @@
-mysql
+mysql/data
+mysql/log
 .DS_Store
 /**/.idea/
 /**/.vscode/
