@@ -61,16 +61,26 @@ services:
     tty: true
 
   mysql:
-    image: mysql:8.0.37
-    restart: on-failure
-    tty: true
+    image: mysql:${MYSQL_VERSION:-8.0.37}
+    # build:
+    #   context: ./docker/mysql
+    #   dockerfile: Dockerfile
+    #   args:
+    #     - mysql_version=${MYSQL_VERSION:-8.0.37}
+    #     - uid=${HOST_UID:-1000}
+    #     - user=${HOST_USER}
+    #     - gid=${HOST_GID:-1000}
+    #     - debug=${BACKEND_DEBUG:-yes}
+    #     - tz=${TIMEZONE:-Etc/UTC}
     command:
       - --mysqlx=OFF
-      - --user=mysql:${HOST_GID}
       - --host_cache_size=0
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      # - --user=${HOST_USER}
+      - --log-error-verbosity=2
     ports:
-      # - "3306:3306"
-      - "33060:33060"
+      - "33070:33060"
     environment:
       - MYSQL_DATABASE=${MYSQL_DB_NAME}
       - MYSQL_USER=${MYSQL_USER}
@@ -81,13 +91,23 @@ services:
       - TZ=EEST
     networks:
       - laravel_net
-    volumes:
-      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/laravel.cnf:cached
-      - ./docker/mysql/data/:/var/lib/mysql/
-      # - ./docker/mysql/log/mysql.log:/var/log/mysql/mysql.log
-      - ./docker/mysql/log/error.log:/var/log/mysql/error.log
+    # volumes:
+    #   - ./docker/mysql/my.cnf:/etc/my.cnf
+      # - ./docker/mysql/data:/var/lib/mysql
+      # - ./docker/mysql/log:/var/log/mysql
+      # - ./docker/mysql/log/mysql.log:/var/log/mysqld.log
+      # - ./docker/mysql/log/error.log:/var/log/mysql/error.log
       # - ./docker/mysql/log/mysql-slow.log:/var/lib/mysql/mysql-slow.log
-    #user: ${HOST_UID}:${HOST_GID}
+    cap_add:
+      - SYS_NICE
+    restart: always
+    tty: true
+    # user: "${HOST_USER}:mysql"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   redis:
     image: redis:${REDIS_VERSION:-6.0.2}-alpine
