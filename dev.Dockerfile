@@ -17,6 +17,7 @@ ENV GID=${gid}
 ENV APP_ROOT=${app_root}
 ENV CPPFLAGS="-I/usr/local/lib/"
 ENV TZ=${tz}
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Copy the latest Composer binary from the official Composer Docker image
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
@@ -81,6 +82,11 @@ RUN if [ -n "${debug}" ]; then set -eux; fi && \
     # Update server document root
     escaped_app_root=$(printf '%s\n' "$app_root" | sed 's/[.\/&]/\\&/g') && \
     sed -i "s/root \/var\/www\/html;/root "${escaped_app_root}";/g" /etc/nginx/conf.d/default.conf
+
+RUN if [ -n "${debug}" ]; then set -eux; fi && \
+    pecl install mongodb && \
+    docker-php-ext-enable mongodb
+    # RUN echo "extension=mongodb.so" >> /usr/local/etc/php/conf.d/docker-php-ext-mongodb.ini
 
 # Set the working directory for the application
 WORKDIR ${app_root}

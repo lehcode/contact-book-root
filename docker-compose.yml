@@ -1,6 +1,6 @@
 services:
   php-api:
-    container_name: api-laravel
+    container_name: php-api
     env_file:
         - ./api/laravel/.env
         - ./.env
@@ -37,12 +37,17 @@ services:
       - "8000:80"
     working_dir: ${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
     tty: true
+    depends_on:
+      - mysql
+      - redis
+      - artisan-cli
+      - composer-cli
 
   api-gateway:
     build:
       context: ./api/gateway
       args:
-        - node_version=${APP_NODE_VERSION}
+        - node_version=${APP_NODE_VERSION:-20.12.2}
         - app_root=/home/${HOST_USER}/nuxt
         - uid=${HOST_UID:-1000}
         - user=${HOST_USER}
@@ -59,26 +64,28 @@ services:
     volumes:
       - ./api/gateway:/home/${HOST_USER}/nuxt
     tty: true
+    depends_on:
+      - php-api
 
   mysql:
-    image: mysql:${MYSQL_VERSION:-8.0.37}
-    # build:
-    #   context: ./docker/mysql
-    #   dockerfile: Dockerfile
-    #   args:
-    #     - mysql_version=${MYSQL_VERSION:-8.0.37}
-    #     - uid=${HOST_UID:-1000}
-    #     - user=${HOST_USER}
-    #     - gid=${HOST_GID:-1000}
-    #     - debug=${BACKEND_DEBUG:-yes}
-    #     - tz=${TIMEZONE:-Etc/UTC}
+    build:
+      context: ./docker/mysql
+      dockerfile: Dockerfile
+      args:
+        - uid=${HOST_UID:-1000}
+        - user=${HOST_USER}
+        - gid=${HOST_GID:-1000}
+        - debug=${BACKEND_DEBUG:-yes}
+        - tz=${TIMEZONE:-Etc/UTC}
+        - mysql_version=${MYSQL_VERSION:-8.0}
+        - root_pass=${MYSQL_DB_ROOT_PASS}
     command:
       - --mysqlx=OFF
       - --host_cache_size=0
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-      - --user=${HOST_USER}
       - --log-error-verbosity=2
+      - --plugin-load-add=connection_control.so
     ports:
       - "33070:33060"
     environment:
@@ -92,17 +99,16 @@ services:
     networks:
       - laravel_net
     volumes:
-      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/docker-my.cnf
-      # - ./docker/mysql/data:/var/lib/mysql
-      # - ./docker/mysql/log:/var/log/mysql
-      # - ./docker/mysql/log/mysql.log:/var/log/mysqld.log
-      # - ./docker/mysql/log/error.log:/var/log/mysql/error.log
-      # - ./docker/mysql/log/mysql-slow.log:/var/lib/mysql/mysql-slow.log
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/docker-my.cnf:ro
+      - mysql_data_vol:/var/lib/mysql
+      # - ./docker/mysql/log/mysql.log:/var/lib/mysql.log
+      # - ./docker/mysql/log/error.log:/var/lib/mysql/mysql_error.log
+      # - ./docker/mysql/log/mysql-slow.log:/var/lib/mysql/mysql_slow.log
     cap_add:
       - SYS_NICE
     restart: always
     tty: true
-    # user: "${HOST_USER}:mysql"
+    user: "${HOST_USER}:docker"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 30s
@@ -123,8 +129,8 @@ services:
       - redis_data:/data
       - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf:cached
 
-  php-composer:
-    container_name: php-composer
+  composer-cli:
+    container_name: composer-cli
     build:
       context: .
       dockerfile: cli.Dockerfile
@@ -139,16 +145,16 @@ services:
         - redis_version=${REDIS_VERSION:-6.0.2}
     environment:
       - XDEBUG_SESSION=1
-    depends_on:
-      - php-api
     volumes:
       - ./api/laravel:${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
     entrypoint: [ "composer" ]
     networks:
       - laravel_net
+    tty: true
+    stdin_open: true
 
-  php-artisan:
-    container_name: php-artisan
+  artisan-cli:
+    container_name: artisan-cli
     build:
       context: .
       dockerfile: cli.Dockerfile
@@ -178,16 +184,17 @@ services:
       - ./api/laravel:${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}
     depends_on:
       - mysql
-      - php-api
     entrypoint: [ "php", "${BACKEND_ROOT:-/var/www/html}/${LARAVEL_APP_NAME}/artisan" ]
     networks:
       - laravel_net
-
+    tty: true
+    stdin_open: true
+    
   ui-vue:
     build:
       context: ./ui/vue
       args:
-        - node_version=${APP_NODE_VERSION}
+        - node_version=${APP_NODE_VERSION:-20.12.2}
         - app_root=${FRONTEND_ROOT:-/src}
         - uid=${HOST_UID:-1000}
         - user=${HOST_USER}
@@ -235,7 +242,7 @@ services:
       - mysql
 
 volumes:
-  mysql_data:
+  mysql_data_vol:
   redis_data:
   npm_logs:
 
