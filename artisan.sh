@@ -2,4 +2,4 @@
 
 set -ex
 
-docker compose run --rm php-artisan "$@"
+docker compose run --rm artisan-cli "$@"
